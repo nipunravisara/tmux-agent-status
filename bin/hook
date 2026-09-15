@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -u
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+state="${1:-}"
+agent="${2:-AGENT}"
+
+# Claude/Codex lifecycle hooks send event JSON on stdin. Drain it so the hook
+# behaves cleanly without introducing jq/python as a runtime dependency.
+if [ ! -t 0 ]; then
+  cat >/dev/null 2>&1 || true
+fi
+
+exec "$ROOT/bin/agent-status" "$state" "$agent"

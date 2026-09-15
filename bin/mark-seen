@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -u
+
+target="${1:-}"
+command -v tmux >/dev/null 2>&1 || exit 0
+[ -n "$target" ] || target="$(tmux display-message -p '#{session_id}' 2>/dev/null || true)"
+[ -n "$target" ] || exit 0
+
+state="$(tmux show-option -qv -t "$target" @agent_status_state 2>/dev/null || true)"
+
+# A completed task becomes "seen" when the user switches to the session.
+# waiting/error intentionally remain visible until the next prompt or a clear.
+if [ "$state" = "done" ]; then
+  tmux set-option -q -t "$target" @agent_status_state idle
+  tmux set-option -q -t "$target" @agent_status_unread 0
+  tmux set-option -q -t "$target" @agent_status_badge ""
+  tmux set-option -q -t "$target" @agent_status_updated "$(date +%s)"
+  tmux refresh-client -S 2>/dev/null || true
+fi

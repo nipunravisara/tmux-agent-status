@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -u
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+payload="${1:-}"
+
+# Codex's legacy/current notify integration appends one JSON argument. This is
+# a completion-only fallback for Codex versions where lifecycle hooks regress.
+case "$payload" in
+  *'"agent-turn-complete"'*) exec "$ROOT/bin/agent-status" done CODEX ;;
+  *) exit 0 ;;
+esac

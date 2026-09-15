@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -u
+
+usage() {
+  cat <<'USAGE'
+Usage: agent-status <working|waiting|done|error|idle|clear> [agent]
+
+Updates the tmux session that owns $TMUX_PANE.
+Examples:
+  agent-status working CLAUDE
+  agent-status done CODEX
+  agent-status clear
+USAGE
+}
+
+state="${1:-}"
+agent="${2:-AGENT}"
+
+case "$state" in
+  working|waiting|done|error|idle|clear) ;;
+  -h|--help|'') usage; exit 0 ;;
+  *) echo "agent-status: unknown state: $state" >&2; usage >&2; exit 2 ;;
+esac
+
+command -v tmux >/dev/null 2>&1 || exit 0
+[ -n "${TMUX:-}" ] || exit 0
+[ -n "${TMUX_PANE:-}" ] || exit 0
+
+session_id="$(tmux display-message -p -t "$TMUX_PANE" '#{session_id}' 2>/dev/null || true)"
+[ -n "$session_id" ] || exit 0
+
+if [ "$state" = "clear" ]; then
+  for key in \
+    @agent_status_state \
+    @agent_status_agent \
+    @agent_status_updated \
+    @agent_status_pane \
+    @agent_status_project \
+    @agent_status_unread \
+    @agent_status_badge
+  do
+    tmux set-option -qu -t "$session_id" "$key" 2>/dev/null || true
+  done
+  tmux refresh-client -S 2>/dev/null || true
+  exit 0
+fi
+
+project="$(tmux display-message -p -t "$TMUX_PANE" '#{pane_current_path}' 2>/dev/null || true)"
+project="${project##*/}"
+now="$(date +%s)"
+
+case "$state" in
+  working)
+    badge="#[fg=cyan]● ${agent}#[default]"
+    unread=0
+    ;;
+  waiting)
+    badge="#[fg=yellow,bold]! ${agent}#[default]"
+    unread=1
+    ;;
+  done)
+    badge="#[fg=green,bold]✓ ${agent}#[default]"
+    unread=1
+    ;;
+  error)
+    badge="#[fg=red,bold]× ${agent}#[default]"
+    unread=1
+    ;;
+  idle)
+    badge=""
+    unread=0
+    ;;
+esac
+
+current_state="$(tmux show-option -qv -t "$session_id" @agent_status_state 2>/dev/null || true)"
+current_agent="$(tmux show-option -qv -t "$session_id" @agent_status_agent 2>/dev/null || true)"
+
+# Avoid unnecessary writes for repetitive PreToolUse events.
+if [ "$current_state" = "$state" ] && [ "$current_agent" = "$agent" ]; then
+  exit 0
+fi
+
+tmux set-option -q -t "$session_id" @agent_status_state "$state"
+tmux set-option -q -t "$session_id" @agent_status_agent "$agent"
+tmux set-option -q -t "$session_id" @agent_status_updated "$now"
+tmux set-option -q -t "$session_id" @agent_status_pane "$TMUX_PANE"
+tmux set-option -q -t "$session_id" @agent_status_project "$project"
+tmux set-option -q -t "$session_id" @agent_status_unread "$unread"
+tmux set-option -q -t "$session_id" @agent_status_badge "$badge"
+
+tmux refresh-client -S 2>/dev/null || true

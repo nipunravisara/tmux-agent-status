@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -u
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+echo "tmux-agent-status doctor"
+echo "------------------------"
+echo "plugin root: $ROOT"
+
+if command -v tmux >/dev/null 2>&1; then
+  echo "tmux:        $(tmux -V 2>/dev/null || echo found)"
+  if tmux list-sessions >/dev/null 2>&1; then
+    echo "tmux server: running"
+    echo
+    echo "Current agent states:"
+    tmux list-sessions -F '  #{session_name}: #{@agent_status_agent} #{@agent_status_state} #{@agent_status_project}' 2>/dev/null || true
+  else
+    echo "tmux server: not running"
+  fi
+else
+  echo "tmux:        NOT FOUND"
+fi
+
+if command -v claude >/dev/null 2>&1; then
+  echo "claude:      $(claude --version 2>/dev/null | head -1)"
+else
+  echo "claude:      not found in PATH"
+fi
+
+if command -v codex >/dev/null 2>&1; then
+  echo "codex:       $(codex --version 2>/dev/null | head -1)"
+else
+  echo "codex:       not found in PATH"
+fi
+
+echo
+for cfg in "$HOME/.claude/settings.json" "$HOME/.codex/hooks.json"; do
+  if [ -f "$cfg" ]; then
+    if grep -Fq "$ROOT/bin/hook" "$cfg"; then
+      echo "hooks:       configured in $cfg"
+    else
+      echo "hooks:       file exists but plugin hooks not found: $cfg"
+    fi
+  else
+    echo "hooks:       not configured: $cfg"
+  fi
+done
+
+echo
+echo "Tip: run $ROOT/tests/test.sh for repository self-tests."

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -u
+
+command -v tmux >/dev/null 2>&1 || exit 0
+while IFS= read -r sid; do
+  [ -n "$sid" ] || continue
+  for key in \
+    @agent_status_state @agent_status_agent @agent_status_updated \
+    @agent_status_pane @agent_status_project @agent_status_unread \
+    @agent_status_badge
+  do
+    tmux set-option -qu -t "$sid" "$key" 2>/dev/null || true
+  done
+done < <(tmux list-sessions -F '#{session_id}' 2>/dev/null || true)
+tmux refresh-client -S 2>/dev/null || true

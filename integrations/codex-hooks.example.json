@@ -1,0 +1,64 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' working CODEX"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' working CODEX"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' working CODEX"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' waiting CODEX"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' done CODEX"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' clear CODEX"
+          }
+        ]
+      }
+    ]
+  }
+}

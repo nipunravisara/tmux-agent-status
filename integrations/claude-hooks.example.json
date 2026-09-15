@@ -1,0 +1,84 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' idle CLAUDE"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' working CLAUDE"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' working CLAUDE"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' working CLAUDE"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' waiting CLAUDE"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' done CLAUDE"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' error CLAUDE"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/ABSOLUTE/PATH/tmux-agent-status/bin/hook' clear CLAUDE"
+          }
+        ]
+      }
+    ]
+  }
+}
