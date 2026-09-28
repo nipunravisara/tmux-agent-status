@@ -27,6 +27,12 @@ The normal tmux session chooser is enhanced too:
 
 `C` means Claude and `X` means Codex.
 
+Prefer something more fun? Switch to the [emoji icon set](#emoji-icons):
+
+```text
+🐙 zenin  main 🎉 │ whereto 🔥 │ spendwise 🙋 │ api 💥
+```
+
 ## Why this works well
 
 The plugin does **not** scrape terminal text. It uses the lifecycle hooks exposed by Claude Code and Codex, maps the hook process back to its owning tmux session through `$TMUX_PANE`, and stores the state in tmux user options.
@@ -126,7 +132,7 @@ tmux new -s backend
 codex
 ```
 
-Send a task, switch to another tmux session, and keep working. The cross-session indicator in `status-right` updates as agents change state.
+Send a task, switch to another tmux session, and keep working. The cross-session indicator in the status bar (`status-right` by default) updates as agents change state.
 
 ## Session chooser
 
@@ -181,6 +187,44 @@ Then reload:
 ```bash
 tmux source-file ~/.tmux.conf
 ```
+
+## Emoji icons
+
+Replace the compact `C●` / `X!` badges with emojis:
+
+```tmux
+set -g @agent-status-icons emoji
+```
+
+| State | Default emoji | Override option |
+| --- | --- | --- |
+| working | 🔥 | `@agent-status-icon-working` |
+| waiting | 🙋 | `@agent-status-icon-waiting` |
+| done | 🎉 | `@agent-status-icon-done` |
+| error | 💥 | `@agent-status-icon-error` |
+| idle | 😴 | `@agent-status-icon-idle` |
+
+Pick your own for any state:
+
+```tmux
+set -g @agent-status-icon-working '🤖'
+set -g @agent-status-icon-idle '💤'
+```
+
+The emoji set does not distinguish Claude from Codex. Use the default `classic` set if you need that.
+
+Your terminal font must be able to show emojis. Emojis with a variation selector (for example `✔️`) can take up the wrong width in tmux, so plain emojis like the defaults work best.
+
+## Status bar position
+
+The indicator is added to `status-right` by default. To show it on the left, after your `status-left` text:
+
+```tmux
+set -g status-left '🐙 #[fg=green]zenin  '
+set -g @agent-status-position left
+```
+
+Set `status-left` **before** loading the plugin, because the plugin appends to it. In `left` mode the plugin also raises `status-left-length` to 100 if it is lower. tmux's default is 10, which would hide the badges.
 
 # Lifecycle mappings
 

@@ -5,10 +5,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 command -v tmux >/dev/null 2>&1 || exit 0
 if ! tmux list-sessions >/dev/null 2>&1; then exit 0; fi
 
-status_right="$(tmux show-option -gv status-right 2>/dev/null || true)"
 needle="  #(\"$ROOT/bin/status-line\")"
-status_right="${status_right//$needle/}"
-tmux set-option -g status-right "$status_right"
+for side in status-left status-right; do
+  value="$(tmux show-option -gv "$side" 2>/dev/null || true)"
+  case "$value" in
+    *"$needle"*) tmux set-option -g "$side" "${value//$needle/}" ;;
+  esac
+done
 
 tmux set-hook -gu 'client-session-changed[100]' 2>/dev/null || true
 # Restore tmux's standard Prefix+s chooser. Prefix+A is removed.

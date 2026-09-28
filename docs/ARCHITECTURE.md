@@ -20,7 +20,7 @@ Claude Code / Codex
         |
         +--> enhanced Prefix+s chooser
         |
-        +--> status-right cross-session summary
+        +--> status-right (or status-left) cross-session summary
 ```
 
 ## Stored tmux user options

@@ -3,10 +3,17 @@ set -u
 
 command -v tmux >/dev/null 2>&1 || exit 0
 
-max="$(tmux show-option -gqv @agent-status-max 2>/dev/null || true)"
-show_idle="$(tmux show-option -gqv @agent-status-show-idle 2>/dev/null || true)"
+# Read every option in one tmux call; this runs on each status refresh.
+IFS='|' read -r max show_idle icons i_working i_waiting i_done i_error i_idle < <(
+  tmux display-message -p '#{@agent-status-max}|#{@agent-status-show-idle}|#{@agent-status-icons}|#{@agent-status-icon-working}|#{@agent-status-icon-waiting}|#{@agent-status-icon-done}|#{@agent-status-icon-error}|#{@agent-status-icon-idle}' 2>/dev/null || true
+)
+max="${max:-}"; show_idle="${show_idle:-}"; icons="${icons:-}"
 case "$max" in ''|*[!0-9]*) max=6 ;; esac
 [ -n "$show_idle" ] || show_idle=off
+[ "$icons" = "emoji" ] || icons=classic
+
+# Fun defaults for the emoji icon set; each can be overridden per state.
+: "${i_working:=🔥}" "${i_waiting:=🙋}" "${i_done:=🎉}" "${i_error:=💥}" "${i_idle:=😴}"
 
 count=0
 hidden=0
@@ -30,20 +37,31 @@ while IFS=$'\t' read -r name agent state unread; do
     *) a="A" ;;
   esac
 
-  case "$state" in
-    working) symbol="#[fg=cyan]${a}●#[default]" ;;
-    waiting) symbol="#[fg=yellow,bold]${a}!#[default]" ;;
-    done)    symbol="#[fg=green,bold]${a}✓#[default]" ;;
-    error)   symbol="#[fg=red,bold]${a}×#[default]" ;;
-    idle)    symbol="#[fg=colour244]${a}○#[default]" ;;
-    *) continue ;;
-  esac
+  if [ "$icons" = "emoji" ]; then
+    case "$state" in
+      working) symbol="$i_working" ;;
+      waiting) symbol="$i_waiting" ;;
+      done)    symbol="$i_done" ;;
+      error)   symbol="$i_error" ;;
+      idle)    symbol="$i_idle" ;;
+      *) continue ;;
+    esac
+  else
+    case "$state" in
+      working) symbol="#[fg=cyan]${a}●#[default]" ;;
+      waiting) symbol="#[fg=yellow,bold]${a}!#[default]" ;;
+      done)    symbol="#[fg=green,bold]${a}✓#[default]" ;;
+      error)   symbol="#[fg=red,bold]${a}×#[default]" ;;
+      idle)    symbol="#[fg=colour244]${a}○#[default]" ;;
+      *) continue ;;
+    esac
+  fi
 
   item="#[fg=colour250]${name}#[default] ${symbol}"
   if [ -n "$out" ]; then out+="$sep"; fi
   out+="$item"
   count=$((count + 1))
-done < <(tmux list-sessions -F '#{session_name}\t#{@agent_status_agent}\t#{@agent_status_state}\t#{@agent_status_unread}' 2>/dev/null || true)
+done < <(tmux list-sessions -F '#{session_name}	#{@agent_status_agent}	#{@agent_status_state}	#{@agent_status_unread}' 2>/dev/null || true)
 
 if [ "$hidden" -gt 0 ]; then
   [ -n "$out" ] && out+="$sep"
