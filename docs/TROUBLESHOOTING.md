@@ -91,10 +91,10 @@ Limit the number of agent sessions shown:
 set -g @agent-status-max 3
 ```
 
-Idle agents are hidden by default. To show them:
+Idle agents are shown by default. To hide them:
 
 ```tmux
-set -g @agent-status-show-idle on
+set -g @agent-status-show-idle off
 ```
 
 Reload:

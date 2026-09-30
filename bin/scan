@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+set -u
+
+# Reconcile session state with the agent processes actually running in panes.
+#
+# Lifecycle hooks only fire for agents started after the hooks were installed,
+# and a killed agent never sends SessionEnd. This scan fills both gaps:
+#   - an agent running in a session with no state is picked up as idle,
+#   - state whose agent process is gone is moved to another live agent in the
+#     same session, or cleared.
+#
+# Usage: scan [--force]   (without --force, runs at most once every 2 seconds)
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+command -v tmux >/dev/null 2>&1 || exit 0
+
+IFS='|' read -r detect agents last < <(
+  tmux display-message -p '#{@agent-status-detect}|#{@agent-status-agents}|#{@agent_status_last_scan}' 2>/dev/null || true
+)
+[ "${detect:-}" = "off" ] && exit 0
+# "process:LABEL" pairs. The process name is matched against the executable
+# basename (or the script run by node/bun/deno/python).
+agents="${agents:-claude:CLAUDE codex:CODEX gemini:GEMINI opencode:OPENCODE aider:AIDER cursor-agent:CURSOR}"
+
+now="$(date +%s)"
+if [ "${1:-}" != "--force" ]; then
+  case "${last:-}" in ''|*[!0-9]*) last=0 ;; esac
+  [ $((now - last)) -ge 2 ] || exit 0
+fi
+tmux set-option -gq @agent_status_last_scan "$now"
+
+panes="$(tmux list-panes -a -F '#{session_id}	#{pane_id}	#{pane_pid}' 2>/dev/null || true)"
+[ -n "$panes" ] || exit 0
+
+# One line per pane that has an agent in its process tree: session, pane, label.
+detected="$(
+  { printf '%s\n' "$panes"; echo '--'; ps -Ao pid=,ppid=,args= 2>/dev/null; } | awk -v agents="$agents" '
+    function base(p) { sub(/.*\//, "", p); return p }
+    function label_for(args,   n, f, exe, i, cand) {
+      n = split(args, f, " ")
+      exe = base(f[1]); sub(/^-/, "", exe)
+      cand[1] = exe
+      if (exe ~ /^(node|bun|deno|python[0-9.]*)$/ && n >= 2) cand[1] = base(f[2])
+      if (args ~ /@anthropic-ai\/claude-code/) cand[1] = "claude"
+      if (args ~ /@openai\/codex/) cand[1] = "codex"
+      if (args ~ /@google\/gemini-cli/) cand[1] = "gemini"
+      sub(/\.(js|mjs|cjs|py)$/, "", cand[1])
+      return (cand[1] in known) ? known[cand[1]] : ""
+    }
+    BEGIN {
+      n = split(agents, a, " ")
+      for (i = 1; i <= n; i++) { split(a[i], kv, ":"); if (kv[1] != "") known[kv[1]] = (kv[2] != "" ? kv[2] : toupper(kv[1])) }
+      reading_panes = 1
+    }
+    reading_panes && $0 == "--" { reading_panes = 0; next }
+    reading_panes { split($0, p, "\t"); np++; psid[np] = p[1]; ppane[np] = p[2]; ppid_[np] = p[3]; next }
+    {
+      pid = $1; ppid = $2
+      args = $0; sub(/^[ \t]*[0-9]+[ \t]+[0-9]+[ \t]+/, "", args)
+      lab[pid] = label_for(args)
+      kids[ppid] = kids[ppid] " " pid
+    }
+    END {
+      for (i = 1; i <= np; i++) {
+        # Breadth-first walk of the pane process tree; nearest agent wins.
+        queue = ppid_[i]; found = ""
+        while (queue != "" && found == "") {
+          split(queue, q, " "); queue = ""
+          for (j in q) {
+            if (lab[q[j]] != "") { found = lab[q[j]]; break }
+            queue = queue kids[q[j]]
+          }
+          sub(/^ +/, "", queue)
+        }
+        if (found != "") print psid[i] "\t" ppane[i] "\t" found
+      }
+    }'
+)"
+
+known_labels=" "
+for pair in $agents; do
+  label="${pair#*:}"; [ "$label" != "$pair" ] || label="$(printf '%s' "$pair" | tr '[:lower:]' '[:upper:]')"
+  known_labels+="$label "
+done
+
+changed=0
+while IFS=$'\t' read -r sid state agent pane updated; do
+  [ -n "$sid" ] || continue
+  rows="$(printf '%s\n' "$detected" | awk -F'\t' -v s="$sid" '$1 == s')"
+
+  if [ -z "$state" ]; then
+    [ -n "$rows" ] || continue
+    IFS=$'\t' read -r _ new_pane new_agent <<<"${rows%%$'\n'*}"
+    TMUX_PANE="$new_pane" "$ROOT/bin/agent-status" idle "$new_agent"
+    changed=1
+    continue
+  fi
+
+  # Only reconcile agents this scan knows how to detect (not custom labels),
+  # and leave fresh transitions alone to avoid racing a starting agent.
+  case "$known_labels" in *" $agent "*) ;; *) continue ;; esac
+  case "$updated" in ''|*[!0-9]*) updated=0 ;; esac
+  [ $((now - updated)) -ge 5 ] || continue
+
+  if printf '%s\n' "$rows" | awk -F'\t' -v p="$pane" -v a="$agent" '$2 == p && $3 == a { f = 1 } END { exit !f }'; then
+    continue
+  fi
+
+  if [ -n "$rows" ]; then
+    IFS=$'\t' read -r _ new_pane new_agent <<<"${rows%%$'\n'*}"
+    TMUX_PANE="$new_pane" "$ROOT/bin/agent-status" idle "$new_agent"
+  else
+    TMUX_PANE="$pane" AGENT_STATUS_SESSION="$sid" "$ROOT/bin/agent-status" clear "$agent"
+  fi
+  changed=1
+done < <(tmux list-sessions -F '#{session_id}	#{@agent_status_state}	#{@agent_status_agent}	#{@agent_status_pane}	#{@agent_status_updated}' 2>/dev/null || true)
+
+[ "$changed" = 0 ] || tmux refresh-client -S 2>/dev/null || true
+exit 0

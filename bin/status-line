@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -u
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 command -v tmux >/dev/null 2>&1 || exit 0
+
+# Pick up agents started before their hooks existed and drop dead ones.
+"$ROOT/bin/scan" >/dev/null 2>&1 || true
 
 # Read every option in one tmux call; this runs on each status refresh.
 IFS='|' read -r max show_idle icons i_working i_waiting i_done i_error i_idle < <(
@@ -9,7 +13,7 @@ IFS='|' read -r max show_idle icons i_working i_waiting i_done i_error i_idle < 
 )
 max="${max:-}"; show_idle="${show_idle:-}"; icons="${icons:-}"
 case "$max" in ''|*[!0-9]*) max=6 ;; esac
-[ -n "$show_idle" ] || show_idle=off
+[ -n "$show_idle" ] || show_idle=on
 [ "$icons" = "emoji" ] || icons=classic
 
 # Fun defaults for the emoji icon set; each can be overridden per state.
@@ -34,7 +38,8 @@ while IFS=$'\t' read -r name agent state unread; do
   case "$agent" in
     CLAUDE|claude|Claude) a="C" ;;
     CODEX|codex|Codex) a="X" ;;
-    *) a="A" ;;
+    '') a="A" ;;
+    *) a="$(printf '%.1s' "$agent")" ;;
   esac
 
   if [ "$icons" = "emoji" ]; then
@@ -61,7 +66,9 @@ while IFS=$'\t' read -r name agent state unread; do
   if [ -n "$out" ]; then out+="$sep"; fi
   out+="$item"
   count=$((count + 1))
-done < <(tmux list-sessions -F '#{session_name}	#{@agent_status_agent}	#{@agent_status_state}	#{@agent_status_unread}' 2>/dev/null || true)
+# Same order as the Prefix+s chooser: session creation order ($0, $1, ...).
+done < <(tmux list-sessions -F '#{session_id}	#{session_name}	#{@agent_status_agent}	#{@agent_status_state}	#{@agent_status_unread}' 2>/dev/null \
+  | sed 's/^\$//' | sort -n -t$'\t' -k1,1 | cut -f2- || true)
 
 if [ "$hidden" -gt 0 ]; then
   [ -n "$out" ] && out+="$sep"

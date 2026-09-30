@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -u
 
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 usage() {
   cat <<'USAGE'
 Usage: agent-status <working|waiting|done|error|idle|clear> [agent]
@@ -24,9 +26,13 @@ esac
 
 command -v tmux >/dev/null 2>&1 || exit 0
 [ -n "${TMUX:-}" ] || exit 0
-[ -n "${TMUX_PANE:-}" ] || exit 0
 
-session_id="$(tmux display-message -p -t "$TMUX_PANE" '#{session_id}' 2>/dev/null || true)"
+# AGENT_STATUS_SESSION lets bin/scan clear a session whose pane is already gone.
+session_id="${AGENT_STATUS_SESSION:-}"
+if [ -z "$session_id" ]; then
+  [ -n "${TMUX_PANE:-}" ] || exit 0
+  session_id="$(tmux display-message -p -t "$TMUX_PANE" '#{session_id}' 2>/dev/null || true)"
+fi
 [ -n "$session_id" ] || exit 0
 
 if [ "$state" = "clear" ]; then
@@ -50,28 +56,9 @@ project="${project##*/}"
 now="$(date +%s)"
 
 case "$state" in
-  working)
-    badge="#[fg=cyan]● ${agent}#[default]"
-    unread=0
-    ;;
-  waiting)
-    badge="#[fg=yellow,bold]! ${agent}#[default]"
-    unread=1
-    ;;
-  done)
-    badge="#[fg=green,bold]✓ ${agent}#[default]"
-    unread=1
-    ;;
-  error)
-    badge="#[fg=red,bold]× ${agent}#[default]"
-    unread=1
-    ;;
-  idle)
-    badge=""
-    unread=0
-    ;;
+  waiting|done|error) unread=1 ;;
+  *) unread=0 ;;
 esac
-
 current_state="$(tmux show-option -qv -t "$session_id" @agent_status_state 2>/dev/null || true)"
 current_agent="$(tmux show-option -qv -t "$session_id" @agent_status_agent 2>/dev/null || true)"
 
@@ -80,10 +67,12 @@ if [ "$current_state" = "$state" ] && [ "$current_agent" = "$agent" ]; then
   exit 0
 fi
 
+badge="$("$ROOT/bin/badge" "$state" "$agent")"
+
 tmux set-option -q -t "$session_id" @agent_status_state "$state"
 tmux set-option -q -t "$session_id" @agent_status_agent "$agent"
 tmux set-option -q -t "$session_id" @agent_status_updated "$now"
-tmux set-option -q -t "$session_id" @agent_status_pane "$TMUX_PANE"
+tmux set-option -q -t "$session_id" @agent_status_pane "${TMUX_PANE:-}"
 tmux set-option -q -t "$session_id" @agent_status_project "$project"
 tmux set-option -q -t "$session_id" @agent_status_unread "$unread"
 tmux set-option -q -t "$session_id" @agent_status_badge "$badge"

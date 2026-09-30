@@ -33,7 +33,7 @@ Each session can carry these user options:
 - `@agent_status_pane` — pane that emitted the state
 - `@agent_status_project` — basename of the pane's working directory
 - `@agent_status_unread` — `0` or `1`
-- `@agent_status_badge` — tmux-formatted badge used by `choose-tree`
+- `@agent_status_badge` — tmux-formatted badge used by `choose-tree`, rendered by `bin/badge` from the active icon set
 
 No persistent database is used. Restarting the tmux server clears the runtime statuses naturally.
 
@@ -47,6 +47,8 @@ turn stops         -> done
 turn fails         -> error (Claude StopFailure)
 session exits      -> clear
 ```
+
+`bin/scan` runs on every status refresh (at most once every 2 seconds) and whenever the picker opens. It walks each pane's process tree using one `ps` call, marks sessions with an untracked agent as idle, and clears state whose agent process is gone. That covers agents started before hooks were installed and agents killed without `SessionEnd`.
 
 A `done` state stays highlighted until the user switches into that session (or sends another prompt there). The `client-session-changed` tmux hook then marks it seen.
 

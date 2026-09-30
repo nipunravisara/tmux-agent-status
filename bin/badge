@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -u
+
+# Print the Prefix+s chooser badge for a state, honouring @agent-status-icons.
+#
+# Usage: badge <state> <agent>          print one badge
+#        badge --refresh                re-render every session's stored badge
+
+command -v tmux >/dev/null 2>&1 || exit 0
+
+IFS='|' read -r icons i_working i_waiting i_done i_error i_idle < <(
+  tmux display-message -p '#{@agent-status-icons}|#{@agent-status-icon-working}|#{@agent-status-icon-waiting}|#{@agent-status-icon-done}|#{@agent-status-icon-error}|#{@agent-status-icon-idle}' 2>/dev/null || true
+)
+: "${i_working:=🔥}" "${i_waiting:=🙋}" "${i_done:=🎉}" "${i_error:=💥}" "${i_idle:=😴}"
+
+render() {
+  local state="$1" agent="${2:-AGENT}"
+  if [ "${icons:-}" = "emoji" ]; then
+    case "$state" in
+      working) printf '%s' "#[fg=cyan]${i_working} ${agent}#[default]" ;;
+      waiting) printf '%s' "#[fg=yellow,bold]${i_waiting} ${agent}#[default]" ;;
+      done)    printf '%s' "#[fg=green,bold]${i_done} ${agent}#[default]" ;;
+      error)   printf '%s' "#[fg=red,bold]${i_error} ${agent}#[default]" ;;
+      idle)    printf '%s' "#[fg=colour244]${i_idle} ${agent}#[default]" ;;
+    esac
+  else
+    case "$state" in
+      working) printf '%s' "#[fg=cyan]● ${agent}#[default]" ;;
+      waiting) printf '%s' "#[fg=yellow,bold]! ${agent}#[default]" ;;
+      done)    printf '%s' "#[fg=green,bold]✓ ${agent}#[default]" ;;
+      error)   printf '%s' "#[fg=red,bold]× ${agent}#[default]" ;;
+      idle)    printf '%s' "#[fg=colour244]○ ${agent}#[default]" ;;
+    esac
+  fi
+}
+
+if [ "${1:-}" = "--refresh" ]; then
+  # Icon options may have changed since the badges were stored (plugin reload).
+  while IFS=$'\t' read -r sid state agent; do
+    [ -n "$state" ] || continue
+    tmux set-option -q -t "$sid" @agent_status_badge "$(render "$state" "$agent")"
+  done < <(tmux list-sessions -F '#{session_id}	#{@agent_status_state}	#{@agent_status_agent}' 2>/dev/null || true)
+  exit 0
+fi
+
+render "${1:-}" "${2:-}"

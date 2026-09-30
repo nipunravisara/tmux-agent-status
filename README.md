@@ -23,7 +23,7 @@ The normal tmux session chooser is enhanced too:
 | `C!` / `X!` | waiting | the agent needs permission / user attention |
 | `C✓` / `X✓` | done | a background session finished a turn |
 | `C×` / `X×` | error | the agent reported a failed turn (currently Claude `StopFailure`) |
-| `C○` / `X○` | idle | optional; hidden by default |
+| `C○` / `X○` | idle | an agent is open in the session but not doing anything |
 
 `C` means Claude and `X` means Codex.
 
@@ -31,6 +31,15 @@ Prefer something more fun? Switch to the [emoji icon set](#emoji-icons):
 
 ```text
 🐙 zenin  main 🎉 │ whereto 🔥 │ spendwise 🙋 │ api 💥
+```
+
+The session chooser uses the same emojis:
+
+```text
+(0) + main:      1 windows (attached)   🎉 CLAUDE
+(1) + whereto:   1 windows              🔥 CODEX
+(2) + spendwise: 1 windows              🙋 CLAUDE
+(3) + api:       1 windows              💥 CODEX
 ```
 
 ## Why this works well
@@ -67,7 +76,7 @@ The installer:
 4. creates timestamped backups before changing existing JSON files,
 5. reloads tmux when a server is already running.
 
-Restart any currently running Claude/Codex processes after installation.
+Agents that were already running before installation are picked up automatically as idle (see [Process detection](#process-detection)). Restart them to get full working/waiting/done tracking through hooks.
 
 For Codex, if the CLI asks you to trust newly discovered hooks, open `/hooks` and approve the commands.
 
@@ -174,12 +183,12 @@ set -g @agent-status-max 4
 
 If more active agent sessions exist, the status bar shows `+N`.
 
-## Show idle agents
+## Hide idle agents
 
-Idle sessions are hidden by default:
+Idle agents are shown by default. To show only sessions with activity:
 
 ```tmux
-set -g @agent-status-show-idle on
+set -g @agent-status-show-idle off
 ```
 
 Then reload:
@@ -187,6 +196,29 @@ Then reload:
 ```bash
 tmux source-file ~/.tmux.conf
 ```
+
+## Process detection
+
+Hooks only fire for agents started after the hooks were installed, and an agent that is killed never reports `SessionEnd`. To cover both cases the plugin also scans each pane's process tree (on every status refresh, and whenever the session picker opens):
+
+- an agent running in a session with no state is shown as idle,
+- state left behind by an agent that has exited is cleared.
+
+Detected process names and their labels are configurable (`process:LABEL`, space separated):
+
+```tmux
+set -g @agent-status-agents 'claude:CLAUDE codex:CODEX gemini:GEMINI opencode:OPENCODE aider:AIDER cursor-agent:CURSOR'
+```
+
+Agents without hooks only get idle presence, not working/done. Turn scanning off with:
+
+```tmux
+set -g @agent-status-detect off
+```
+
+## Session order
+
+The status bar lists sessions in the same order as the `Prefix+s` picker, which is session creation order.
 
 ## Emoji icons
 
@@ -211,7 +243,9 @@ set -g @agent-status-icon-working '🤖'
 set -g @agent-status-icon-idle '💤'
 ```
 
-The emoji set does not distinguish Claude from Codex. Use the default `classic` set if you need that.
+The same emojis are used in the status bar and the `Prefix+s` / `Prefix+A` session chooser. The status bar does not tell Claude from Codex in emoji mode; the chooser still shows the agent name next to the emoji (`🔥 CLAUDE`).
+
+Reloading tmux (`tmux source-file ~/.tmux.conf`) re-renders chooser badges for sessions that already have a state, so switching icon sets applies right away.
 
 Your terminal font must be able to show emojis. Emojis with a variation selector (for example `✔️`) can take up the wrong width in tmux, so plain emojis like the defaults work best.
 

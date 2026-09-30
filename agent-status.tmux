@@ -15,7 +15,7 @@ if [ -z "$(tmux show-option -gqv @agent-status-max 2>/dev/null)" ]; then
   tmux set-option -gq @agent-status-max "6"
 fi
 if [ -z "$(tmux show-option -gqv @agent-status-show-idle 2>/dev/null)" ]; then
-  tmux set-option -gq @agent-status-show-idle "off"
+  tmux set-option -gq @agent-status-show-idle "on"
 fi
 
 if [ -z "$(tmux show-option -gqv @agent-status-position 2>/dev/null)" ]; then
@@ -34,16 +34,18 @@ case "$position" in
   *)    target=status-right; other=status-left ;;
 esac
 
+# Strip any renderer from any install path (e.g. a TPM copy plus a dev checkout),
+# so loading the plugin twice never shows the badges twice.
+strip_renderer() {
+  printf '%s' "$1" | sed -E 's@ *#\("[^"]*/bin/status-line"\)@@g'
+}
+
 other_value="$(tmux show-option -gv "$other" 2>/dev/null || true)"
-case "$other_value" in
-  *"$status_cmd"*) tmux set-option -g "$other" "${other_value//  $status_cmd/}" ;;
-esac
+stripped="$(strip_renderer "$other_value")"
+[ "$stripped" = "$other_value" ] || tmux set-option -g "$other" "$stripped"
 
 target_value="$(tmux show-option -gv "$target" 2>/dev/null || true)"
-case "$target_value" in
-  *"$status_cmd"*) ;;
-  *) tmux set-option -ag "$target" "  $status_cmd" ;;
-esac
+tmux set-option -g "$target" "$(strip_renderer "$target_value")  $status_cmd"
 
 # tmux truncates status-left at 10 cells by default, which would hide the badges.
 if [ "$target" = "status-left" ]; then
@@ -59,10 +61,14 @@ tmux set-hook -g 'client-session-changed[100]' "run-shell '\"$ROOT/bin/mark-seen
 # Enhanced version of tmux's normal Prefix+s session picker.
 # Set @agent-status-rebind-s off before loading the plugin to keep tmux's default binding.
 if [ "$(tmux show-option -gqv @agent-status-rebind-s 2>/dev/null || echo on)" = "on" ]; then
-  tmux bind-key s choose-tree -s -F '#{session_name}: #{session_windows} windows#{?session_attached, (attached),} #{E:@agent_status_badge}'
+  tmux bind-key s run-shell "'$ROOT/bin/scan' --force" '\;' choose-tree -s -F '#{session_name}: #{session_windows} windows#{?session_attached, (attached),} #{E:@agent_status_badge}'
 fi
 
 # A dedicated picker is always available on Prefix+A.
-tmux bind-key A choose-tree -s -F '#{session_name}: #{session_windows} windows#{?session_attached, (attached),} #{E:@agent_status_badge}'
+tmux bind-key A run-shell "'$ROOT/bin/scan' --force" '\;' choose-tree -s -F '#{session_name}: #{session_windows} windows#{?session_attached, (attached),} #{E:@agent_status_badge}'
 
+# Pick up agents that are already running when the plugin loads.
+"$ROOT/bin/scan" --force >/dev/null 2>&1 || true
+# Re-render stored chooser badges in case @agent-status-icons changed.
+"$ROOT/bin/badge" --refresh >/dev/null 2>&1 || true
 tmux refresh-client -S 2>/dev/null || true
