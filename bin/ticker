@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -u
+
+# Renders the status line into @agent_status_line. tmux re-runs #() at most once
+# a second, which makes the working spinner crawl, so this loop ticks fast while
+# an agent works and once a second otherwise. It exits when the tmux server goes
+# away or a newer ticker takes over (plugin reload).
+# ponytail: ~3 tmux calls per tick while working; slow the sleep if that shows up in CPU.
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+command -v tmux >/dev/null 2>&1 || exit 0
+
+me="$$"
+tmux set-option -gq @agent_status_ticker_pid "$me" || exit 0
+
+frame=0
+last=""
+while [ "$(tmux show-option -gqv @agent_status_ticker_pid 2>/dev/null)" = "$me" ]; do
+  line="$(AGENT_STATUS_FRAME="$frame" "$ROOT/bin/status-line")"
+  if [ "$line" != "$last" ]; then
+    tmux set-option -gq @agent_status_line "$line"
+    for c in $(tmux list-clients -F '#{client_name}' 2>/dev/null); do
+      tmux refresh-client -S -t "$c" 2>/dev/null
+    done
+    last="$line"
+  fi
+  frame=$((frame + 1))
+  case "$line" in
+    *◜*|*◝*|*◞*|*◟*) sleep 0.1 ;;
+    *) sleep 1 ;;
+  esac
+done

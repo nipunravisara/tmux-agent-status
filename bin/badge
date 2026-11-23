@@ -11,7 +11,7 @@ command -v tmux >/dev/null 2>&1 || exit 0
 IFS='|' read -r icons i_working i_waiting i_done i_error i_idle < <(
   tmux display-message -p '#{@agent-status-icons}|#{@agent-status-icon-working}|#{@agent-status-icon-waiting}|#{@agent-status-icon-done}|#{@agent-status-icon-error}|#{@agent-status-icon-idle}' 2>/dev/null || true
 )
-: "${i_working:=🔥}" "${i_waiting:=🙋}" "${i_done:=🎉}" "${i_error:=💥}" "${i_idle:=😴}"
+: "${i_working:=⠿}" "${i_waiting:=🙋}" "${i_done:=🎉}" "${i_error:=💥}" "${i_idle:=😴}"
 
 render() {
   local state="$1" agent="${2:-AGENT}"
@@ -25,7 +25,7 @@ render() {
     esac
   else
     case "$state" in
-      working) printf '%s' "#[fg=cyan]● ${agent}#[default]" ;;
+      working) printf '%s' "#[fg=cyan]⠿ ${agent}#[default]" ;;
       waiting) printf '%s' "#[fg=yellow,bold]! ${agent}#[default]" ;;
       done)    printf '%s' "#[fg=green,bold]✓ ${agent}#[default]" ;;
       error)   printf '%s' "#[fg=red,bold]× ${agent}#[default]" ;;

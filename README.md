@@ -3,23 +3,23 @@
 See **Claude Code** and **OpenAI Codex** task state across tmux sessions without switching into every session.
 
 ```text
- main C●  │  whereto X✓  │  spendwise C!  │  api X●
+ main C⠹  │  whereto X✓  │  spendwise C!  │  api X⠹
 ```
 
 The normal tmux session chooser is enhanced too:
 
 ```text
-(0) + main:      1 windows (attached)   ● CLAUDE
+(0) + main:      1 windows (attached)   ⠿ CLAUDE
 (1) + whereto:   1 windows              ✓ CODEX
 (2) + spendwise: 1 windows              ! CLAUDE
-(3) + api:       1 windows              ● CODEX
+(3) + api:       1 windows              ⠿ CODEX
 ```
 
 ## What the states mean
 
 | Badge | State | Meaning |
 | --- | --- | --- |
-| `C●` / `X●` | working | Claude / Codex is processing a turn |
+| `C⠹` / `X⠹` | working | Claude / Codex is processing a turn |
 | `C!` / `X!` | waiting | the agent needs permission / user attention |
 | `C✓` / `X✓` | done | a background session finished a turn |
 | `C×` / `X×` | error | the agent reported a failed turn (currently Claude `StopFailure`) |
@@ -30,14 +30,14 @@ The normal tmux session chooser is enhanced too:
 Prefer something more fun? Switch to the [emoji icon set](#emoji-icons):
 
 ```text
-🐙 zenin  main 🎉 │ whereto 🔥 │ spendwise 🙋 │ api 💥
+🐙 zenin  main 🎉 │ whereto ⠹ │ spendwise 🙋 │ api 💥
 ```
 
 The session chooser uses the same emojis:
 
 ```text
 (0) + main:      1 windows (attached)   🎉 CLAUDE
-(1) + whereto:   1 windows              🔥 CODEX
+(1) + whereto:   1 windows              ⠿ CODEX
 (2) + spendwise: 1 windows              🙋 CLAUDE
 (3) + api:       1 windows              💥 CODEX
 ```
@@ -222,7 +222,7 @@ The status bar lists sessions in the same order as the `Prefix+s` picker, which 
 
 ## Emoji icons
 
-Replace the compact `C●` / `X!` badges with emojis:
+Replace the compact `C⠹` / `X!` badges with emojis:
 
 ```tmux
 set -g @agent-status-icons emoji
@@ -230,7 +230,7 @@ set -g @agent-status-icons emoji
 
 | State | Default emoji | Override option |
 | --- | --- | --- |
-| working | 🔥 | `@agent-status-icon-working` |
+| working | ◜◝◞◟ spinner | `@agent-status-icon-working` |
 | waiting | 🙋 | `@agent-status-icon-waiting` |
 | done | 🎉 | `@agent-status-icon-done` |
 | error | 💥 | `@agent-status-icon-error` |
@@ -243,7 +243,7 @@ set -g @agent-status-icon-working '🤖'
 set -g @agent-status-icon-idle '💤'
 ```
 
-The same emojis are used in the status bar and the `Prefix+s` / `Prefix+A` session chooser. The status bar does not tell Claude from Codex in emoji mode; the chooser still shows the agent name next to the emoji (`🔥 CLAUDE`).
+The same emojis are used in the status bar and the `Prefix+s` / `Prefix+A` session chooser. The status bar does not tell Claude from Codex in emoji mode; the chooser still shows the agent name next to the emoji (`⠿ CLAUDE`).
 
 Reloading tmux (`tmux source-file ~/.tmux.conf`) re-renders chooser badges for sessions that already have a state, so switching icon sets applies right away.
 
@@ -336,7 +336,7 @@ Inside a tmux pane:
 ~/.tmux/plugins/tmux-agent-status/bin/agent-status working TEST
 ```
 
-You should see the current session appear as `A●`.
+You should see the current session appear as `A⠹`.
 
 Try the other states:
 

@@ -27,7 +27,8 @@ fi
 
 # Append the compact cross-session status renderer once, to status-left or
 # status-right, and remove it from the other side so switching sides on reload works.
-status_cmd="#(\"$ROOT/bin/status-line\")"
+# bin/ticker keeps @agent_status_line fresh (fast enough for the spinner).
+status_cmd="#{@agent_status_line}"
 position="$(tmux show-option -gqv @agent-status-position 2>/dev/null || true)"
 case "$position" in
   left) target=status-left; other=status-right ;;
@@ -37,7 +38,7 @@ esac
 # Strip any renderer from any install path (e.g. a TPM copy plus a dev checkout),
 # so loading the plugin twice never shows the badges twice.
 strip_renderer() {
-  printf '%s' "$1" | sed -E 's@ *#\("[^"]*/bin/status-line"\)@@g'
+  printf '%s' "$1" | sed -E -e 's@ *#\("[^"]*/bin/status-line"\)@@g' -e 's| *#\{@agent_status_line\}||g'
 }
 
 other_value="$(tmux show-option -gv "$other" 2>/dev/null || true)"
@@ -66,6 +67,9 @@ fi
 
 # A dedicated picker is always available on Prefix+A.
 tmux bind-key A run-shell "'$ROOT/bin/scan' --force" '\;' choose-tree -s -F '#{session_name}: #{session_windows} windows#{?session_attached, (attached),} #{E:@agent_status_badge}'
+
+# Start the renderer; a reload replaces the old one.
+"$ROOT/bin/ticker" </dev/null >/dev/null 2>&1 &
 
 # Pick up agents that are already running when the plugin loads.
 "$ROOT/bin/scan" --force >/dev/null 2>&1 || true

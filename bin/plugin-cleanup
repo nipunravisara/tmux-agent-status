@@ -5,13 +5,17 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 command -v tmux >/dev/null 2>&1 || exit 0
 if ! tmux list-sessions >/dev/null 2>&1; then exit 0; fi
 
-needle="  #(\"$ROOT/bin/status-line\")"
-for side in status-left status-right; do
-  value="$(tmux show-option -gv "$side" 2>/dev/null || true)"
-  case "$value" in
-    *"$needle"*) tmux set-option -g "$side" "${value//$needle/}" ;;
-  esac
+for needle in "  #(\"$ROOT/bin/status-line\")" "  #{@agent_status_line}"; do
+  for side in status-left status-right; do
+    value="$(tmux show-option -gv "$side" 2>/dev/null || true)"
+    case "$value" in
+      *"$needle"*) tmux set-option -g "$side" "${value//$needle/}" ;;
+    esac
+  done
 done
+# Stops bin/ticker: it exits once its pid is no longer the registered one.
+tmux set-option -gu @agent_status_ticker_pid 2>/dev/null || true
+tmux set-option -gu @agent_status_line 2>/dev/null || true
 
 tmux set-hook -gu 'client-session-changed[100]' 2>/dev/null || true
 # Restore tmux's standard Prefix+s chooser. Prefix+A is removed.
