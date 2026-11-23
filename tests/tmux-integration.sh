@@ -47,11 +47,11 @@ state="$(tmux -L "$socket" show-option -qv -t alpha @agent_status_state)"
 
 # Chooser badges follow the emoji icon set, including after a reload.
 badge="$(tmux -L "$socket" show-option -qv -t alpha @agent_status_badge)"
-case "$badge" in *"○ CLAUDE"*) ;; *) echo "unexpected classic badge: $badge" >&2; exit 1 ;; esac
+case "$badge" in *"✔ CLAUDE"*) ;; *) echo "unexpected classic badge: $badge" >&2; exit 1 ;; esac
 tmux -L "$socket" set-option -g @agent-status-icons emoji
 tmux -L "$socket" run-shell "$ROOT/agent-status.tmux"
 badge="$(tmux -L "$socket" show-option -qv -t alpha @agent_status_badge)"
-case "$badge" in *"😴 CLAUDE"*) ;; *) echo "unexpected emoji badge: $badge" >&2; exit 1 ;; esac
+case "$badge" in *"✔ CLAUDE"*) ;; *) echo "unexpected emoji badge: $badge" >&2; exit 1 ;; esac
 tmux -L "$socket" set-option -g @agent-status-icons classic
 
 # The scanner picks up an agent that was started without hooks.

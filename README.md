@@ -20,25 +20,25 @@ The normal tmux session chooser is enhanced too:
 | Badge | State | Meaning |
 | --- | --- | --- |
 | `C⠹` / `X⠹` | working | Claude / Codex is processing a turn |
-| `C!` / `X!` | waiting | the agent needs permission / user attention |
-| `C✓` / `X✓` | done | a background session finished a turn |
+| `C∗` / `X∗` (orange) | waiting | the agent needs permission / user attention |
+| `C✔` / `X✔` (green) | done | a background session finished a turn |
 | `C×` / `X×` | error | the agent reported a failed turn (currently Claude `StopFailure`) |
-| `C○` / `X○` | idle | an agent is open in the session but not doing anything |
+| `C✔` / `X✔` (green) | idle | an agent is open in the session but not doing anything |
 
 `C` means Claude and `X` means Codex.
 
 Prefer something more fun? Switch to the [emoji icon set](#emoji-icons):
 
 ```text
-🐙 zenin  main 🎉 │ whereto ⠹ │ spendwise 🙋 │ api 💥
+🐙 zenin  main ✔ │ whereto ◜ │ spendwise ∗ │ api 💥
 ```
 
 The session chooser uses the same emojis:
 
 ```text
-(0) + main:      1 windows (attached)   🎉 CLAUDE
+(0) + main:      1 windows (attached)   ✔ CLAUDE
 (1) + whereto:   1 windows              ⠿ CODEX
-(2) + spendwise: 1 windows              🙋 CLAUDE
+(2) + spendwise: 1 windows              ∗ CLAUDE
 (3) + api:       1 windows              💥 CODEX
 ```
 
@@ -231,10 +231,10 @@ set -g @agent-status-icons emoji
 | State | Default emoji | Override option |
 | --- | --- | --- |
 | working | ◜◝◞◟ spinner | `@agent-status-icon-working` |
-| waiting | 🙋 | `@agent-status-icon-waiting` |
-| done | 🎉 | `@agent-status-icon-done` |
+| waiting | orange ∗ | `@agent-status-icon-waiting` |
+| done | green ✔ | `@agent-status-icon-done` |
 | error | 💥 | `@agent-status-icon-error` |
-| idle | 😴 | `@agent-status-icon-idle` |
+| idle | green ✔ | `@agent-status-icon-idle` |
 
 Pick your own for any state:
 
@@ -257,6 +257,8 @@ The indicator is added to `status-right` by default. To show it on the left, aft
 set -g status-left '🐙 #[fg=green]zenin  '
 set -g @agent-status-position left
 ```
+
+Use `set -g @agent-status-position center` to show it in the middle of the bar, separate from `status-left`, `status-right` and the window list.
 
 Set `status-left` **before** loading the plugin, because the plugin appends to it. In `left` mode the plugin also raises `status-left-length` to 100 if it is lower. tmux's default is 10, which would hide the badges.
 

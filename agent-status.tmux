@@ -25,28 +25,40 @@ if [ -z "$(tmux show-option -gqv @agent-status-icons 2>/dev/null)" ]; then
   tmux set-option -gq @agent-status-icons "classic"
 fi
 
-# Append the compact cross-session status renderer once, to status-left or
-# status-right, and remove it from the other side so switching sides on reload works.
+# Append the compact cross-session status renderer once, to status-left,
+# status-right or the centre of the bar, and remove it from the other places so
+# switching position on reload works.
 # bin/ticker keeps @agent_status_line fresh (fast enough for the spinner).
 status_cmd="#{@agent_status_line}"
 position="$(tmux show-option -gqv @agent-status-position 2>/dev/null || true)"
 case "$position" in
-  left) target=status-left; other=status-right ;;
-  *)    target=status-right; other=status-left ;;
+  left)          target=status-left; others="status-right status-format[0]" ;;
+  center|centre) target="status-format[0]"; others="status-left status-right" ;;
+  *)             target=status-right; others="status-left status-format[0]" ;;
 esac
+# Centre uses its own region of the bar, so it never fights the window list.
+centre_cmd="#[align=absolute-centre]$status_cmd#[default]"
 
 # Strip any renderer from any install path (e.g. a TPM copy plus a dev checkout),
 # so loading the plugin twice never shows the badges twice.
 strip_renderer() {
-  printf '%s' "$1" | sed -E -e 's@ *#\("[^"]*/bin/status-line"\)@@g' -e 's| *#\{@agent_status_line\}||g'
+  printf '%s' "$1" | sed -E -e 's@ *#\("[^"]*/bin/status-line"\)@@g' \
+    -e 's|#\[align=absolute-centre\]#\{@agent_status_line\}#\[default\]||g' \
+    -e 's| *#\{@agent_status_line\}||g'
 }
 
-other_value="$(tmux show-option -gv "$other" 2>/dev/null || true)"
-stripped="$(strip_renderer "$other_value")"
-[ "$stripped" = "$other_value" ] || tmux set-option -g "$other" "$stripped"
+for other in $others; do
+  other_value="$(tmux show-option -gv "$other" 2>/dev/null || true)"
+  stripped="$(strip_renderer "$other_value")"
+  [ "$stripped" = "$other_value" ] || tmux set-option -g "$other" "$stripped"
+done
 
 target_value="$(tmux show-option -gv "$target" 2>/dev/null || true)"
-tmux set-option -g "$target" "$(strip_renderer "$target_value")  $status_cmd"
+if [ "$target" = "status-format[0]" ]; then
+  tmux set-option -g "$target" "$(strip_renderer "$target_value")$centre_cmd"
+else
+  tmux set-option -g "$target" "$(strip_renderer "$target_value")  $status_cmd"
+fi
 
 # tmux truncates status-left at 10 cells by default, which would hide the badges.
 if [ "$target" = "status-left" ]; then

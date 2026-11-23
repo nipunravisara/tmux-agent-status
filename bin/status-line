@@ -20,7 +20,7 @@ case "$max" in ''|*[!0-9]*) max=6 ;; esac
 # Working = arc spinner; bin/ticker passes a fast frame counter.
 frames=(◜ ◝ ◞ ◟)
 spin="${frames[$(( ${AGENT_STATUS_FRAME:-$(date +%s)} % ${#frames[@]} ))]}"
-: "${i_working:=#[fg=cyan]${spin}#[default]}" "${i_waiting:=🙋}" "${i_done:=🎉}" "${i_error:=💥}" "${i_idle:=😴}"
+: "${i_working:=#[fg=cyan]${spin}#[default]}" "${i_waiting:=#[fg=colour208,bold]∗#[default]}" "${i_done:=#[fg=green,bold]✔#[default]}" "${i_error:=💥}" "${i_idle:=#[fg=green]✔#[default]}"
 
 count=0
 hidden=0
@@ -57,10 +57,10 @@ while IFS=$'\t' read -r name agent state unread; do
   else
     case "$state" in
       working) symbol="#[fg=cyan]${a}${spin}#[default]" ;;
-      waiting) symbol="#[fg=yellow,bold]${a}!#[default]" ;;
-      done)    symbol="#[fg=green,bold]${a}✓#[default]" ;;
+      waiting) symbol="#[fg=colour208,bold]${a}∗#[default]" ;;
+      done)    symbol="#[fg=green,bold]${a}✔#[default]" ;;
       error)   symbol="#[fg=red,bold]${a}×#[default]" ;;
-      idle)    symbol="#[fg=colour244]${a}○#[default]" ;;
+      idle)    symbol="#[fg=green]${a}✔#[default]" ;;
       *) continue ;;
     esac
   fi
